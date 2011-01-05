@@ -35,7 +35,6 @@ start_link() ->
 
     BindAddress = couch_config:get("httpd", "bind_address", any),
     Port = couch_config:get("httpd", "port", "5984"),
-    MaxConnections = couch_config:get("httpd", "max_connections", "2048"),
     VirtualHosts = couch_config:get("vhosts"),
     VhostGlobals = re:split(
         couch_config:get("httpd", "vhost_global_handlers", ""),
@@ -65,7 +64,17 @@ start_link() ->
     UrlHandlers = dict:from_list(UrlHandlersList),
     DbUrlHandlers = dict:from_list(DbUrlHandlersList),
     DesignUrlHandlers = dict:from_list(DesignUrlHandlersList),
+    {ok, ServerOptions} = couch_util:parse_term(
+        couch_config:get("httpd", "server_options", "[]")),
+    {ok, SocketOptions} = couch_util:parse_term(
+        couch_config:get("httpd", "socket_options", "[]")),
     Loop = fun(Req)->
+        case SocketOptions of
+        [] ->
+            ok;
+        _ ->
+            ok = mochiweb_socket:setopts(Req:get(socket), SocketOptions)
+        end,
         apply(?MODULE, handle_request, [
             Req, DefaultFun, UrlHandlers, DbUrlHandlers, DesignUrlHandlers,
                 VirtualHosts, VhostGlobals
@@ -74,12 +83,11 @@ start_link() ->
 
     % and off we go
 
-    {ok, Pid} = case mochiweb_http:start([
+    {ok, Pid} = case mochiweb_http:start(ServerOptions ++ [
         {loop, Loop},
         {name, ?MODULE},
         {ip, BindAddress},
-        {port, Port},
-        {max, MaxConnections}
+        {port, Port}
     ]) of
     {ok, MochiPid} -> {ok, MochiPid};
     {error, Reason} ->
@@ -92,9 +100,11 @@ start_link() ->
             ?MODULE:stop();
         ("httpd", "port") ->
             ?MODULE:stop();
-        ("httpd", "max_connections") ->
-            ?MODULE:stop();
         ("httpd", "default_handler") ->
+            ?MODULE:stop();
+        ("httpd", "server_options") ->
+            ?MODULE:stop();
+        ("httpd", "socket_options") ->
             ?MODULE:stop();
         ("httpd_global_handlers", _) ->
             ?MODULE:stop();
