@@ -19,7 +19,7 @@
 
 -include("couch_db.hrl").
 
--define(REP_ID_VERSION, 2).
+-define(REP_ID_VERSION, 3).
 
 -record(state, {
     changes_feed,
@@ -494,14 +494,22 @@ maybe_append_options(Options, Props) ->
 % Versioned clauses for generating replication ids
 % If a change is made to how replications are identified
 % add a new clause and increase ?REP_ID_VERSION at the top
-make_replication_id({Props}, UserCtx, 2) ->
+make_replication_id({Props}, UserCtx, 3) ->
     {ok, HostName} = inet:gethostname(),
     Port = mochiweb_socket_server:get(couch_httpd, port),
     Src = get_rep_endpoint(UserCtx, couch_util:get_value(<<"source">>, Props)),
     Tgt = get_rep_endpoint(UserCtx, couch_util:get_value(<<"target">>, Props)),
     maybe_append_filters({Props}, [HostName, Port, Src, Tgt]);
-make_replication_id({Props}, UserCtx, 1) ->
+make_replication_id({Props}, UserCtx0, 2) ->
     {ok, HostName} = inet:gethostname(),
+    UserCtx = list_to_tuple(lists:sublist(tuple_to_list(UserCtx0), 3)),
+    Port = mochiweb_socket_server:get(couch_httpd, port),
+    Src = get_rep_endpoint(UserCtx, couch_util:get_value(<<"source">>, Props)),
+    Tgt = get_rep_endpoint(UserCtx, couch_util:get_value(<<"target">>, Props)),
+    maybe_append_filters({Props}, [HostName, Port, Src, Tgt]);
+make_replication_id({Props}, UserCtx0, 1) ->
+    {ok, HostName} = inet:gethostname(),
+    UserCtx = list_to_tuple(lists:sublist(tuple_to_list(UserCtx0), 3)),
     Src = get_rep_endpoint(UserCtx, couch_util:get_value(<<"source">>, Props)),
     Tgt = get_rep_endpoint(UserCtx, couch_util:get_value(<<"target">>, Props)),
     maybe_append_filters({Props}, [HostName, Src, Tgt]).
