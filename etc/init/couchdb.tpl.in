@@ -29,7 +29,7 @@ DESCRIPTION="database server"
 NAME=couchdb
 SCRIPT_NAME=`basename $0`
 COUCHDB=%bindir%/%couchdb_command_name%
-CONFIGURATION_FILE=%sysconfdir%/default/couchdb
+CONFIGURATION_FILE=%sysconfdir%/sysconfig/couchdb
 RUN_DIR=%localstaterundir%
 LSB_LIBRARY=/lib/lsb/init-functions
 
